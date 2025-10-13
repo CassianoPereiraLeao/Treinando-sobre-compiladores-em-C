@@ -81,7 +81,7 @@ typedef enum token_type {
 } token_type_t;
 
 typedef struct token {
-    token_type_t* type;
+    token_type_t type;
     char* lexeme;
     struct token* next;
 } token_t;
