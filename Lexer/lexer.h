@@ -63,6 +63,7 @@ typedef enum token_type {
     TT_PRIVATE,
     TT_PUBLIC,
     TT_PROTECTED,
+    TT_STRUCT,
 
     // simbolos
     TT_LEFT_PAREN,

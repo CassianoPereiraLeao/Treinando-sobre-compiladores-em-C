@@ -320,3 +320,135 @@ ast_node_t* term(void) {
 
     return t;
 }
+
+ast_node_t* factor(void) {
+    token_t* aux = list;
+    if(check_token(TT_NUMBER)) {
+        ast_node_t* node = malloc(sizeof(ast_node_t));
+        node->expr.integer = atoi(list->lexeme);
+        node->type = INTEGER;
+        next();
+
+        return node;
+    } else if(check_consume(TT_IDENTIFIER)) {
+        if(check_token(TT_LEFT_PAREN)) {
+            list = aux;
+            return ast_call();
+        }
+        list = aux;
+
+        ast_node_t* node = malloc(sizeof(ast_node_t));
+        node->expr.identifier = list->lexeme;
+        node->type = ID;
+        next();
+        
+        return node;
+    } else if(check_token(TT_STRING)) {
+        struct literal_pair* literal = malloc(sizeof(struct literal_pair));
+
+        literal->literal = list->lexeme;
+        literal->label = str_count;
+        if(literals_head != NULL) 
+            literal->next = literals_head;
+        literals_head = literal;
+
+        ast_node_t* node = malloc(sizeof(ast_node_t));
+        node->expr.string = str_count;
+        node->type = STRING_LIT;
+        next();
+        str_count++;
+
+        return node;
+    }
+
+    return NULL;
+}
+
+expr_type_t ast_type(void) {
+    expr_type_t res;
+
+    if (check_token(TT_STRUCT)) {
+        char* s_name = next()->lexeme;
+        char* s_type = aligned_alloc(0x1000, strlen(s_name)+1);
+        strcpy(s_type, s_name);
+        next();
+        res = ((size_t)s_type) | (STRUC & 0xfff);
+    } else if (check_consume(TT_LONG)) {
+        check_consume(TT_INT);
+        res = INT64;
+    } else if (check_consume(TT_SHORT)) {
+        check_consume(TT_INT);
+        res = INT16;
+    } else if (check_consume(TT_UNSIGNED)) {
+        expr_type_t t = ast_type();
+        switch (t) {
+            case INT8:
+                res = UINT8;
+                break;
+            case INT16:
+                res = UINT16;
+                break;
+            case INT32:
+                res = UINT32;
+                break;
+            case INT64:
+                res = UINT64;
+                break;
+            default:
+                break;
+        }
+    } else if (check_consume(TT_CHAR))
+        res = INT8;
+    else if (check_consume(TT_INT))
+        res = INT32;
+    else if (check_consume(TT_VOID))
+        res = VOID_T;
+    
+    if (check_consume(TT_STAR))
+        res |= TYPE_POINTER;
+    
+    return res;
+}
+
+size_t ast_type_size(expr_type_t type) {
+    switch (type) {
+        case INT8:
+            return 1;
+        case INT16:
+            return 2;
+        case INT32:
+            return 4;
+        case INT64:
+            return 8;
+        case UINT8:
+            return 1;
+        case UINT16:
+            return 2;
+        case UINT32:
+            return 4;
+        case UINT64:
+            return 8;
+        case F32:
+            return 4;
+        case F64:
+            return 8;
+        case VOID_T:
+            return 0;
+        case STRUC:
+            return 0;
+        default:
+            return -1;
+    }
+}
+
+void ast_walk(ast_node_t* ast) {
+    if((ast->type & 0xfff) == INTEGER)
+        printf("n: %ld\n", ast->expr.integer);
+    else if ((ast->type) == BINARY) {
+        printf("(");
+        ast_walk(ast->expr.binary.left);
+        printf(" + ");
+        ast_walk(ast->expr.binary.right);
+        printf(")\n");
+    }
+}
